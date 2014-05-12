@@ -14,7 +14,7 @@ zend_module_entry myext_module_entry = {
     STANDARD_MODULE_HEADER,
     "myext",
     NULL, /* Function entries */
-    NULL, /* Module init */
+    PHP_MINIT(myext), /* Module init */
     NULL, /* Module shutdown */
     NULL, /* Request init */
     NULL, /* Request shutdown */
@@ -27,3 +27,15 @@ zend_module_entry myext_module_entry = {
 #ifdef COMPILE_DL_MYEXT
 ZEND_GET_MODULE(myext)
 #endif
+
+zend_class_entry *ce_Logger;
+
+PHP_MINIT_FUNCTION(myext)
+{
+	zend_class_entry ce;
+
+	INIT_CLASS_ENTRY(ce, "Logger", NULL);
+	ce_Logger = zend_register_internal_class(&ce TSRMLS_CC);
+
+	return SUCCESS;
+}
