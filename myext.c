@@ -18,12 +18,19 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_temperature_converter, 0, 0, 1)
     ZEND_ARG_INFO(0, mode)
 ZEND_END_ARG_INFO();
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_multiple_fahrenheit_to_celsius, 0, 0, 1)
+    ZEND_ARG_INFO(0, temperatures)
+ZEND_END_ARG_INFO();
+
 zend_function_entry myext_functions[] =
 {
 	PHP_FE(fahrenheit_to_celsius,arginfo_fahrenheit_to_celsius)
 	PHP_FE(celsius_to_fahrenheit,arginfo_celsius_to_fahrenheit)
 	PHP_FE(temperature_converter, arginfo_temperature_converter)
-	PHP_FE_END /* Marks the end of function entries */
+
+	PHP_FE(multiple_fahrenheit_to_celsius, arginfo_multiple_fahrenheit_to_celsius)
+
+	PHP_FE_END
 };
 
 
@@ -100,4 +107,29 @@ PHP_FUNCTION(celsius_to_fahrenheit)
 	}
 
 	RETURN_DOUBLE(php_celsius_to_fahrenheit(c));
+}
+
+PHP_FUNCTION(multiple_fahrenheit_to_celsius)
+{
+	HashTable *temperatures = NULL;
+	HashPosition pos;
+	zval **data = NULL;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "h", &temperatures) == FAILURE) {
+		return;
+	}
+	if (zend_hash_num_elements(temperatures) == 0) {
+		return;
+	}
+
+	array_init_size(return_value, zend_hash_num_elements(temperatures));
+
+	for (zend_hash_internal_pointer_reset_ex(temperatures, &pos);
+		 zend_hash_get_current_data_ex(temperatures, (void **)&data, &pos) != FAILURE;
+		 zend_hash_move_forward_ex(temperatures, &pos)) {
+			if (Z_TYPE_PP(data) != IS_DOUBLE) {
+				convert_to_double_ex(data);
+			}
+			add_next_index_double(return_value, php_fahrenheit_to_celsius(Z_DVAL_PP(data)));
+	}
 }
