@@ -46,6 +46,7 @@ void logger_rsrc_dtor(zend_rsrc_list_entry *rsrc)
 
 zend_class_entry *ce_Logger;
 zend_class_entry *ce_Logger_iface;
+static zend_class_entry *ce_Logger_ex;
 
 ZEND_BEGIN_ARG_INFO(arginfo_logger___construct, 0)
     ZEND_ARG_INFO(0, value)
@@ -69,7 +70,10 @@ static zend_function_entry logger_iface_functions[] = {
 
 PHP_MINIT_FUNCTION(myext)
 {
-    zend_class_entry ce, ce_iface;
+    zend_class_entry ce, ce_iface, ce_exception;
+
+    INIT_CLASS_ENTRY(ce_exception, "LoggerException", NULL);
+    ce_Logger_ex = zend_register_internal_class_ex(&ce_exception, zend_exception_get_default(), NULL);
 
     INIT_CLASS_ENTRY(ce_iface, "LoggerInterface", logger_iface_functions);
     ce_Logger_iface = zend_register_internal_interface(&ce_iface);
