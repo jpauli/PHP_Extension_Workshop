@@ -15,7 +15,7 @@ zend_module_entry myext_module_entry = {
     "myext",
     NULL, /* Function entries */
     PHP_MINIT(myext), /* Module init */
-    NULL, /* Module shutdown */
+    PHP_MSHUTDOWN(myext), /* Module shutdown */
     NULL, /* Request init */
     NULL, /* Request shutdown */
     NULL, /* Module information */
@@ -57,6 +57,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_logger_log, 0, 0, 2)
     ZEND_ARG_INFO(0, message)
 ZEND_END_ARG_INFO()
 
+PHP_INI_BEGIN()
+	PHP_INI_ENTRY("logger.default_file", LOGGER_DEFAULT_LOG_FILE, PHP_INI_ALL, NULL)
+PHP_INI_END()
+
 static zend_function_entry logger_class_functions[] = {
     PHP_ME( Logger, __construct, arginfo_logger___construct, ZEND_ACC_PUBLIC|ZEND_ACC_CTOR )
     PHP_ME( Logger, log, arginfo_logger_log, ZEND_ACC_PUBLIC )
@@ -70,6 +74,8 @@ static zend_function_entry logger_iface_functions[] = {
 
 PHP_MINIT_FUNCTION(myext)
 {
+    REGISTER_INI_ENTRIES();
+    
     zend_class_entry ce, ce_iface, ce_exception;
 
     INIT_CLASS_ENTRY(ce_exception, "LoggerException", NULL);
@@ -93,6 +99,13 @@ PHP_MINIT_FUNCTION(myext)
     return SUCCESS;
 }
 
+PHP_MSHUTDOWN_FUNCTION(myext)
+{
+	UNREGISTER_INI_ENTRIES();
+
+	return SUCCESS;
+}
+
 PHP_METHOD( Logger, __construct )
 {
     char *file = NULL;
@@ -103,8 +116,8 @@ PHP_METHOD( Logger, __construct )
     }
 
     if (!file) {
-        file     = LOGGER_DEFAULT_LOG_FILE;
-        file_len = sizeof(LOGGER_DEFAULT_LOG_FILE) - 1;
+        file     = INI_STR("logger.default_file");
+        file_len = strlen(file);
     }
 
     zend_update_property_stringl(ce_Logger, getThis(), ZEND_STRL("file"), file, file_len TSRMLS_CC);
