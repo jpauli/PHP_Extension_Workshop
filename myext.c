@@ -45,6 +45,7 @@ void logger_rsrc_dtor(zend_rsrc_list_entry *rsrc)
 }
 
 zend_class_entry *ce_Logger;
+zend_class_entry *ce_Logger_iface;
 
 ZEND_BEGIN_ARG_INFO(arginfo_logger___construct, 0)
     ZEND_ARG_INFO(0, value)
@@ -61,13 +62,22 @@ static zend_function_entry logger_class_functions[] = {
     PHP_FE_END
 };
 
+static zend_function_entry logger_iface_functions[] = {
+    PHP_ABSTRACT_ME( LoggerInterface, log, arginfo_logger_log )
+    PHP_FE_END
+};
+
 PHP_MINIT_FUNCTION(myext)
 {
-    zend_class_entry ce;
+    zend_class_entry ce, ce_iface;
+
+    INIT_CLASS_ENTRY(ce_iface, "LoggerInterface", logger_iface_functions);
+    ce_Logger_iface = zend_register_internal_interface(&ce_iface);
 
     INIT_CLASS_ENTRY(ce, "Logger", logger_class_functions);
     ce_Logger = zend_register_internal_class(&ce);
-
+    zend_class_implements(ce_Logger, 1, ce_Logger_iface);
+    
     zend_declare_property_string(ce_Logger, ZEND_STRL("file"), "", ZEND_ACC_PROTECTED);
     zend_declare_property_null(ce_Logger, ZEND_STRL("handle"), ZEND_ACC_PRIVATE);
     zend_declare_class_constant_long(ce_Logger, ZEND_STRL("INFO"), LOG_INFO);
