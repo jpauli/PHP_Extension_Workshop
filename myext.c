@@ -19,7 +19,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_temperature_converter, 0, 0, 1)
 ZEND_END_ARG_INFO();
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_multiple_fahrenheit_to_celsius, 0, 0, 1)
-    ZEND_ARG_INFO(0, temperatures)
+    ZEND_ARG_INFO(1, temperatures)
 ZEND_END_ARG_INFO();
 
 zend_function_entry myext_functions[] =
@@ -128,8 +128,9 @@ PHP_FUNCTION(multiple_fahrenheit_to_celsius)
 		 zend_hash_get_current_data_ex(temperatures, (void **)&data, &pos) != FAILURE;
 		 zend_hash_move_forward_ex(temperatures, &pos)) {
 			if (Z_TYPE_PP(data) != IS_DOUBLE) {
-				convert_to_double_ex(data);
+				convert_to_double(*data);
 			}
-			add_next_index_double(return_value, php_fahrenheit_to_celsius(Z_DVAL_PP(data)));
+
+			Z_DVAL_PP(data) = php_fahrenheit_to_celsius(Z_DVAL_PP(data));
 	}
 }
