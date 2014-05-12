@@ -33,6 +33,11 @@ zend_function_entry myext_functions[] =
 	PHP_FE_END
 };
 
+PHP_MINIT_FUNCTION(myext)
+{
+	REGISTER_LONG_CONSTANT("TEMP_CONVERTER_TO_CELSIUS", TEMP_CONVERTER_TO_CELSIUS, CONST_CS|CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("TEMP_CONVERTER_TO_FAHRENHEIT", TEMP_CONVERTER_TO_FAHRENHEIT, CONST_CS|CONST_PERSISTENT);
+}
 
 /* {{{ myext_module_entry
  */
@@ -40,7 +45,7 @@ zend_module_entry myext_module_entry = {
     STANDARD_MODULE_HEADER,
     "myext",
     myext_functions, /* Function entries */
-    NULL, /* Module init */
+    PHP_MINIT(myext), /* Module init */
     NULL, /* Module shutdown */
     NULL, /* Request init */
     NULL, /* Request shutdown */
@@ -76,10 +81,10 @@ PHP_FUNCTION(temperature_converter)
 
 	switch (mode)
 	{
-		case 1:
+		case TEMP_CONVERTER_TO_CELSIUS:
 			spprintf(&result, 0, "%.2f degrees fahrenheit gives %.2f degrees celsius", t, php_fahrenheit_to_celsius(t));
 			RETURN_STRINGL(result, strlen(result), 0);
-		case 2:
+		case TEMP_CONVERTER_TO_FAHRENHEIT:
 			spprintf(&result, 0, "%.2f degrees celsius gives %.2f degrees fahrenheit", t, php_celsius_to_fahrenheit(t));
 			RETURN_STRINGL(result, strlen(result), 0);
 		default:
