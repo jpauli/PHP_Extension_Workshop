@@ -21,15 +21,8 @@ static int myext_output_handler(void **nothing, php_output_context *output_conte
 	return SUCCESS;
 }
 
-static php_output_handler *myext_output_handler_init(const char *handler_name, size_t handler_name_len, size_t chunk_size, int flags)
-{
-	return php_output_handler_create_internal(handler_name, handler_name_len, myext_output_handler, chunk_size, flags);
-}
-
 PHP_MINIT_FUNCTION(myext)
 {
-	php_output_handler_alias_register("myext-handler", sizeof("myext-handler") -1, myext_output_handler_init);
-
 	return SUCCESS;
 }
 
@@ -37,7 +30,7 @@ PHP_RINIT_FUNCTION(myext)
 {
 	php_output_handler *handler;
 
-	handler = myext_output_handler_init("myext handler", sizeof("myext handler") -1, /* PHP_OUTPUT_HANDLER_DEFAULT_SIZE */ 128, PHP_OUTPUT_HANDLER_STDFLAGS);
+	handler = php_output_handler_create_internal("myext handler", sizeof("myext handler") -1, myext_output_handler, /* PHP_OUTPUT_HANDLER_DEFAULT_SIZE */ 128, PHP_OUTPUT_HANDLER_STDFLAGS);
 
 	php_output_handler_start(handler);
 
