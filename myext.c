@@ -7,6 +7,7 @@
 #include "ext/standard/info.h"
 #include "php_myext.h"
 #include "ext/spl/spl_exceptions.h"
+#include "Zend/zend_exceptions.h"
 
 /* {{{ myext_module_entry
  */
@@ -39,11 +40,6 @@ static zval dummy;
 #define LOGGER_RESOURCE_ID Logger_res_id
 
 #define LOGGER_DEFAULT_LOG_FILE "/tmp/php-extension-logger.log"
-
-void logger_rsrc_dtor(zend_resource *rsrc)
-{
-	php_stream_close((php_stream *)rsrc->ptr);
-}
 
 zend_class_entry *ce_Logger;
 zend_class_entry *ce_Logger_iface;
@@ -111,7 +107,7 @@ PHP_METHOD( Logger, log )
 {
     long level;
     char *message, *level_str, *message_str;
-    int message_len, message_str_len;
+    size_t message_len, message_str_len;
     zval *handle, new_handle;
     php_stream *fd;
 
@@ -164,4 +160,9 @@ PHP_METHOD( Logger, log )
     efree(message_str);
 
     RETURN_TRUE
+}
+
+static void logger_rsrc_dtor(zend_resource *rsrc)
+{
+	php_stream_close((php_stream *)rsrc->ptr);
 }
