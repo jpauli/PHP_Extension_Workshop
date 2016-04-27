@@ -18,7 +18,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_temperature_converter, 0, 0, 1)
     ZEND_ARG_INFO(0, mode)
 ZEND_END_ARG_INFO();
 
-zend_function_entry myext_functions[] =
+static const zend_function_entry myext_functions[] =
 {
 	PHP_FE(fahrenheit_to_celsius,arginfo_fahrenheit_to_celsius)
 	PHP_FE(celsius_to_fahrenheit,arginfo_celsius_to_fahrenheit)
@@ -60,8 +60,8 @@ static double php_celsius_to_fahrenheit(double c)
 PHP_FUNCTION(temperature_converter)
 {
 	double t;
-	long mode = 1;
-	char *result = NULL;
+	zend_long mode = 1;
+	zend_string *result;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "d|l", &t, &mode) == FAILURE) {
 		return;
@@ -70,11 +70,11 @@ PHP_FUNCTION(temperature_converter)
 	switch (mode)
 	{
 		case 1:
-			spprintf(&result, 0, "%.2f degrees fahrenheit gives %.2f degrees celsius", t, php_fahrenheit_to_celsius(t));
-			RETURN_STRINGL(result, strlen(result), 0);
+			result = strpprintf(0, "%.2f degrees fahrenheit gives %.2f degrees celsius", t, php_fahrenheit_to_celsius(t));
+			RETURN_STR(result);
 		case 2:
-			spprintf(&result, 0, "%.2f degrees celsius gives %.2f degrees fahrenheit", t, php_celsius_to_fahrenheit(t));
-			RETURN_STRINGL(result, strlen(result), 0);
+			result = strpprintf(0, "%.2f degrees celsius gives %.2f degrees fahrenheit", t, php_celsius_to_fahrenheit(t));
+			RETURN_STR(result);
 		default:
 			php_error(E_WARNING, "Invalid mode provided, accepted values are 1 or 2");
 	}
