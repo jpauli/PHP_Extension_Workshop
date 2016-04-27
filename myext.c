@@ -7,6 +7,7 @@
 #include "ext/standard/info.h"
 #include "php_myext.h"
 #include "ext/spl/spl_exceptions.h"
+#include "Zend/zend_exceptions.h"
 
 /* {{{ myext_module_entry
  */
@@ -29,6 +30,7 @@ ZEND_GET_MODULE(myext)
 #endif
 
 static int Logger_res_id;
+static zval dummy;
 
 #define LOG_ERROR 0
 #define LOG_DEBUG 1
@@ -38,11 +40,6 @@ static int Logger_res_id;
 #define LOGGER_RESOURCE_ID Logger_res_id
 
 #define LOGGER_DEFAULT_LOG_FILE "/tmp/php-extension-logger.log"
-
-void logger_rsrc_dtor(zend_rsrc_list_entry *rsrc)
-{
-	php_stream_close((php_stream *)rsrc->ptr);
-}
 
 zend_class_entry *ce_Logger;
 
@@ -82,7 +79,7 @@ PHP_MINIT_FUNCTION(myext)
 PHP_METHOD( Logger, __construct )
 {
     char *file = NULL;
-    int file_len;
+    size_t file_len;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|s", &file, &file_len) == FAILURE) {
         return;
@@ -90,41 +87,43 @@ PHP_METHOD( Logger, __construct )
 
     if (!file) {
         file     = LOGGER_DEFAULT_LOG_FILE;
-        file_len = sizeof(LOGGER_DEFAULT_LOG_FILE) - 1;
+        file_len = strlen(LOGGER_DEFAULT_LOG_FILE);
     }
 
-    zend_update_property_stringl(ce_Logger, getThis(), ZEND_STRL("file"), file, file_len TSRMLS_CC);
+    zend_update_property_stringl(ce_Logger, getThis(), ZEND_STRL("file"), file, file_len);
 }
 
 PHP_METHOD( Logger, log )
 {
     long level;
     char *message, *level_str, *message_str;
-    int message_len, message_str_len;
-    zval *handle, *new_handle;
+    size_t message_len, message_str_len;
+    zval *handle, new_handle;
     php_stream *fd;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ls", &level, &message, &message_len) == FAILURE) {
         return;
     }
 
-    handle = zend_read_property(ce_Logger, getThis(), ZEND_STRL("handle"), 1);
+    handle = zend_read_property(ce_Logger, getThis(), ZEND_STRL("handle"), 1, &dummy);
 
     switch(Z_TYPE_P(handle))
     {
         case IS_NULL:
-        	fd = php_stream_open_wrapper(Z_STRVAL_P(zend_read_property(ce_Logger, getThis(), ZEND_STRL("file"), 0)), "ab", 0, NULL);
+        	fd = php_stream_open_wrapper(Z_STRVAL_P(zend_read_property(ce_Logger, getThis(), ZEND_STRL("file"), 0, &dummy)), "ab", 0, NULL);
             if (!fd ) {
         		zend_throw_exception(spl_ce_RuntimeException, "Cannot open file", 0);
         		return;
             }
-            ALLOC_INIT_ZVAL(new_handle);
-            ZEND_REGISTER_RESOURCE(new_handle, fd, LOGGER_RESOURCE_ID);
-            zend_update_property(ce_Logger, getThis(), ZEND_STRL("handle"), new_handle);
-            zval_ptr_dtor(&new_handle);
+            {
+            	zend_resource *res;
+            	res = zend_register_resource((void *)fd, LOGGER_RESOURCE_ID);
+            	ZVAL_RES(&new_handle, res);
+            	zend_update_property(ce_Logger, getThis(), ZEND_STRL("handle"), &new_handle);
+            }
             break;
         case IS_RESOURCE:
-            ZEND_FETCH_RESOURCE(fd, php_stream*, &handle, -1, LOGGER_RESOURCE_NAME, LOGGER_RESOURCE_ID);
+            fd = (php_stream *)zend_fetch_resource2(Z_RES_P(handle), LOGGER_RESOURCE_NAME, LOGGER_RESOURCE_ID, -1);
             break;
         default:
             zend_error_noreturn(E_ERROR, "Something really wrong happened here, type of 'file' property cannot be something else than NULL or a resource.");
@@ -151,4 +150,9 @@ PHP_METHOD( Logger, log )
     efree(message_str);
 
     RETURN_TRUE
+}
+
+static void logger_rsrc_dtor(zend_resource *rsrc)
+{
+	php_stream_close((php_stream *)rsrc->ptr);
 }
