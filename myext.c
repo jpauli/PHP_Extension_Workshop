@@ -63,7 +63,7 @@ static PHP_MINIT_FUNCTION(myext)
 static void myext_zend_extension_op_array_handler(zend_op_array *op_array)
 {
 	if (op_array->function_name) {
-		op_array->reserved[0] = strdup(op_array->function_name);
+		op_array->reserved[0] = zend_string_copy(op_array->function_name);
 	}
 }
 
@@ -90,10 +90,10 @@ static void myext_zend_extension_op_array_ctor(zend_op_array *op_array)
 static void myext_zend_extension_op_array_dtor(zend_op_array *op_array)
 {
 	if (op_array->reserved[0]) {
-		php_printf("Destroying OP Array for function %s\n", (char *)op_array->reserved[0]);
-		free(op_array->reserved[0]);
+		php_printf("Destroying OP Array for function '%s'\n",ZSTR_VAL((zend_string *)op_array->reserved[0]));
+		zend_string_release(op_array->reserved[0]);
 	} else {
-		php_printf("Destroying OP Array from file %s", op_array->filename);
+		php_printf("Destroying OP Array for file '%s'", ZSTR_VAL(op_array->filename));
 	}
 	php_printf("\n");
 }
