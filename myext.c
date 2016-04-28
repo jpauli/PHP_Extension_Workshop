@@ -35,7 +35,7 @@ PHP_MINIT_FUNCTION(myext)
 	zend_class_entry ce;
 
 	INIT_CLASS_ENTRY(ce, "Logger", NULL);
-	ce_Logger = zend_register_internal_class(&ce TSRMLS_CC);
+	ce_Logger = zend_register_internal_class(&ce);
 
 	return SUCCESS;
 }
