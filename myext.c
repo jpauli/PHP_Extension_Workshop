@@ -8,21 +8,20 @@
 #include "php_myext.h"
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_fahrenheit_to_celsius, 0, 0, 1)
-    ZEND_ARG_INFO(0, fahrenheit)
+    ZEND_ARG_INFO(1, fahrenheit)
 ZEND_END_ARG_INFO();
 ZEND_BEGIN_ARG_INFO_EX(arginfo_celsius_to_fahrenheit, 0, 0, 1)
-    ZEND_ARG_INFO(0, celsius)
+    ZEND_ARG_INFO(1, celsius)
 ZEND_END_ARG_INFO();
 ZEND_BEGIN_ARG_INFO_EX(arginfo_temperature_converter, 0, 0, 1)
     ZEND_ARG_INFO(0, temperature)
     ZEND_ARG_INFO(0, mode)
 ZEND_END_ARG_INFO();
-
 ZEND_BEGIN_ARG_INFO_EX(arginfo_multiple_fahrenheit_to_celsius, 0, 0, 1)
-    ZEND_ARG_INFO(1, temperatures)
+    ZEND_ARG_INFO(0, temperatures)
 ZEND_END_ARG_INFO();
 
-zend_function_entry myext_functions[] =
+static const zend_function_entry myext_functions[] =
 {
 	PHP_FE(fahrenheit_to_celsius,arginfo_fahrenheit_to_celsius)
 	PHP_FE(celsius_to_fahrenheit,arginfo_celsius_to_fahrenheit)
@@ -67,8 +66,8 @@ static double php_celsius_to_fahrenheit(double c)
 PHP_FUNCTION(temperature_converter)
 {
 	double t;
-	long mode = 1;
-	char *result = NULL;
+	zend_long mode = 1;
+	zend_string *result;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "d|l", &t, &mode) == FAILURE) {
 		return;
@@ -77,11 +76,11 @@ PHP_FUNCTION(temperature_converter)
 	switch (mode)
 	{
 		case 1:
-			spprintf(&result, 0, "%.2f degrees fahrenheit gives %.2f degrees celsius", t, php_fahrenheit_to_celsius(t));
-			RETURN_STRINGL(result, strlen(result), 0);
+			result = strpprintf(0, "%.2f degrees fahrenheit gives %.2f degrees celsius", t, php_fahrenheit_to_celsius(t));
+			RETURN_STR(result);
 		case 2:
-			spprintf(&result, 0, "%.2f degrees celsius gives %.2f degrees fahrenheit", t, php_celsius_to_fahrenheit(t));
-			RETURN_STRINGL(result, strlen(result), 0);
+			result = strpprintf(0, "%.2f degrees celsius gives %.2f degrees fahrenheit", t, php_celsius_to_fahrenheit(t));
+			RETURN_STR(result);
 		default:
 			php_error(E_WARNING, "Invalid mode provided, accepted values are 1 or 2");
 	}
@@ -89,31 +88,39 @@ PHP_FUNCTION(temperature_converter)
 
 PHP_FUNCTION(fahrenheit_to_celsius)
 {
-	double f;
+	double result;
+	zval *param;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d", &f) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &param) == FAILURE) {
 		return;
 	}
 
-	RETURN_DOUBLE(php_fahrenheit_to_celsius(f));
+	ZVAL_DEREF(param);
+	convert_to_double(param);
+
+	RETVAL_DOUBLE(result = php_fahrenheit_to_celsius(Z_DVAL_P(param)));
 }
 
 PHP_FUNCTION(celsius_to_fahrenheit)
 {
-	double c;
+	double result;
+	zval *param;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d", &c) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &param) == FAILURE) {
 		return;
 	}
 
-	RETURN_DOUBLE(php_celsius_to_fahrenheit(c));
+	ZVAL_DEREF(param);
+	convert_to_double(param);
+
+	RETVAL_DOUBLE(result = php_celsius_to_fahrenheit(Z_DVAL_P(param)));
+
 }
 
 PHP_FUNCTION(multiple_fahrenheit_to_celsius)
 {
-	HashTable *temperatures = NULL;
-	HashPosition pos;
-	zval **data = NULL;
+	HashTable *temperatures;
+	zval *data;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "h", &temperatures) == FAILURE) {
 		return;
@@ -124,13 +131,10 @@ PHP_FUNCTION(multiple_fahrenheit_to_celsius)
 
 	array_init_size(return_value, zend_hash_num_elements(temperatures));
 
-	for (zend_hash_internal_pointer_reset_ex(temperatures, &pos);
-		 zend_hash_get_current_data_ex(temperatures, (void **)&data, &pos) != FAILURE;
-		 zend_hash_move_forward_ex(temperatures, &pos)) {
-			if (Z_TYPE_PP(data) != IS_DOUBLE) {
-				convert_to_double(*data);
-			}
-
-			Z_DVAL_PP(data) = php_fahrenheit_to_celsius(Z_DVAL_PP(data));
-	}
+	ZEND_HASH_FOREACH_VAL(temperatures, data)
+		zval dup;
+		ZVAL_COPY_VALUE(&dup, data);
+		convert_to_double(&dup);
+		add_next_index_double(return_value, php_fahrenheit_to_celsius(Z_DVAL(dup)));
+	ZEND_HASH_FOREACH_END();
 }
